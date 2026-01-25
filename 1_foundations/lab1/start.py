@@ -59,22 +59,26 @@ def main():
         console.print(Markdown(question))
 
 
- # Other question -- split from above
+explore_business_opportunities(client)
+
+
+def explore_business_opportunities(client: OpenAI):
+    """Explore business areas and pain points for Agentic AI opportunities."""
     messages = "Pick a business area that might be worth exploring for an Agentic AI opportunity. Keep it short and clear."
     business_area = chat(client, messages, model="gpt-4.1-mini")
-    if response:
-        console.print(Markdown(response))
-        
-    messages = f"Present a pain point in the {business_idea} industry - something challenging that might be ripe for an Agentic solution."
-    pain_point = chat(client, messages, model="gpt-4.1-mini")
-    if response:
-        console.print(Markdown(response))
+    if business_area:
+        console.print(Markdown(business_area))
 
-    messages = f"Present a pain point in the {pain_point} industry - something challenging that might be ripe for an Agentic solution."
-    soluton = chat(client, messages, model="gpt-4.1-mini")
-    if response:
-        console.print(Markdown(    soluton = chat(client, messages, model="gpt-4.1-mini")
-))
+    messages = f"Present a pain point in the {business_area} industry - something challenging that might be ripe for an Agentic solution."
+    pain_point = chat(client, messages, model="gpt-4.1-mini")
+    if pain_point:
+        console.print(Markdown(pain_point))
+
+    messages = f"Present a solution for the pain point: {pain_point} - something that might be ripe for an Agentic solution."
+    solution = chat(client, messages, model="gpt-4.1-mini")
+    if solution:
+        console.print(Markdown(solution))
+
 
 if __name__ == "__main__":
     main()
