@@ -3,6 +3,10 @@ import sys
 
 from dotenv import load_dotenv
 from openai import OpenAI, OpenAIError
+from rich.console import Console
+from rich.markdown import Markdown
+
+console = Console()
 
 
 def load_api_key() -> str | None:
@@ -46,14 +50,31 @@ def main():
     # Ask the model its name
     response = chat(client, "What is your name?")
     if response:
-        print(response)
+        console.print(Markdown(response))
 
     # Generate a challenging IQ question
     iq_prompt = "Please propose a hard, challenging question to assess someone's IQ. Respond only with the question."
     question = chat(client, iq_prompt, model="gpt-4.1-mini")
     if question:
-        print(question)
+        console.print(Markdown(question))
 
+
+ # Other question -- split from above
+    messages = "Pick a business area that might be worth exploring for an Agentic AI opportunity. Keep it short and clear."
+    business_area = chat(client, messages, model="gpt-4.1-mini")
+    if response:
+        console.print(Markdown(response))
+        
+    messages = f"Present a pain point in the {business_idea} industry - something challenging that might be ripe for an Agentic solution."
+    pain_point = chat(client, messages, model="gpt-4.1-mini")
+    if response:
+        console.print(Markdown(response))
+
+    messages = f"Present a pain point in the {pain_point} industry - something challenging that might be ripe for an Agentic solution."
+    soluton = chat(client, messages, model="gpt-4.1-mini")
+    if response:
+        console.print(Markdown(    soluton = chat(client, messages, model="gpt-4.1-mini")
+))
 
 if __name__ == "__main__":
     main()
