@@ -58,8 +58,7 @@ def main():
     if question:
         console.print(Markdown(question))
 
-
-explore_business_opportunities(client)
+    explore_business_opportunities(client)
 
 
 def explore_business_opportunities(client: OpenAI):
