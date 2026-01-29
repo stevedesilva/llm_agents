@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-from anthropic import Anthropic
 from rich.console import Console
 from rich.markdown import Markdown
 
@@ -57,7 +56,7 @@ def generate_question() -> str:
         model="gpt-4o-mini",
         messages=messages,
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""
 
 
 def get_answer(question: str, model: str = "gpt-4o-mini") -> str:
@@ -69,7 +68,7 @@ def get_answer(question: str, model: str = "gpt-4o-mini") -> str:
         model=model,
         messages=messages,
     )
-    return response.choices[0].message.content
+    return response.choices[0].message.content or ""
 
 
 def display(content: str):
