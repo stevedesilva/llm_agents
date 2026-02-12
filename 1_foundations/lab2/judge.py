@@ -1,3 +1,5 @@
+"""Judging logic — uses an LLM to rank competitor answers by quality."""
+
 import json
 
 from openai import OpenAI

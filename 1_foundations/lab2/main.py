@@ -1,3 +1,5 @@
+"""LLM Arena — pits multiple LLM providers against each other on a generated question and ranks them."""
+
 from openai import OpenAI
 
 from display import display
@@ -21,6 +23,7 @@ def generate_question() -> str:
 
 
 def main():
+    """Orchestrate the arena: generate a question, query all providers, and judge the results."""
     validate_api_keys()
 
     question = generate_question()

@@ -1,3 +1,5 @@
+"""Rich-based markdown console output for the arena."""
+
 from rich.console import Console
 from rich.markdown import Markdown
 

@@ -1,3 +1,5 @@
+"""Provider definitions and query helpers for OpenAI-compatible and Anthropic LLM APIs."""
+
 import os
 from dataclasses import dataclass
 
@@ -10,6 +12,8 @@ load_dotenv()
 
 @dataclass
 class Provider:
+    """Configuration for a single LLM provider, including model, API endpoint, and auth details."""
+
     name: str
     model: str
     kind: str  # "openai" or "anthropic"
