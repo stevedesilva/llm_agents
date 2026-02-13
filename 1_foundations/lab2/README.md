@@ -1,12 +1,12 @@
 # Lab 2 — LLM Arena
 
-An LLM arena that generates a challenging question, sends it to multiple LLM providers, and uses a judge model to rank their answers.
+An LLM arena that generates a challenging question, sends it to multiple LLM providers, and has every provider judge all answers. Individual rankings are averaged into a final result.
 
 ## How It Works
 
 1. **Generate** — OpenAI (`gpt-4o-mini`) creates a challenging question.
-2. **Query** — The question is sent to every configured provider in turn.
-3. **Judge** — A judge model (`gpt-5-mini`) ranks the responses and prints the results.
+2. **Query** — All configured providers are queried **concurrently** using `asyncio.gather`.
+3. **Judge** — Every provider that answered also serves as a judge, ranking all responses **concurrently**. Individual rankings are averaged to produce a final leaderboard.
 
 ## File Structure
 
@@ -14,7 +14,7 @@ An LLM arena that generates a challenging question, sends it to multiple LLM pro
 lab2/
 ├── main.py        # Entry point — orchestrates question generation, querying, and judging
 ├── providers.py   # Provider dataclass, provider list, API-key validation, and query logic
-├── judge.py       # Builds the judging prompt and calls the judge model to rank answers
+├── judge.py       # Multi-judge logic: each provider judges, results are averaged
 └── display.py     # Rich-based markdown console output helper
 ```
 
@@ -23,7 +23,8 @@ lab2/
 | Symbol              | Description                                                        |
 |---------------------|--------------------------------------------------------------------|
 | `generate_question` | Uses OpenAI to produce a single challenging question for the arena |
-| `main`              | Orchestrates the full pipeline: validate keys, generate question, query providers, judge, and display rankings |
+| `has_api_key`       | Checks whether a provider's API key is available without making an API call |
+| `main`              | Async entry point — queries providers and runs judging concurrently via `asyncio.gather` |
 
 ### providers.py
 
@@ -39,7 +40,10 @@ lab2/
 | Symbol               | Description                                                        |
 |-----------------------|--------------------------------------------------------------------|
 | `build_judge_prompt`  | Assembles the full judging prompt with the question and all competitor responses |
-| `judge_answers`       | Calls the judge model, parses the JSON ranking, and returns a list of `(rank, name)` tuples |
+| `parse_ranking`       | Parses a judge's JSON response into `(rank, name)` tuples |
+| `judge_answers`       | Has a single provider judge all answers and return ranked results |
+| `average_rankings`    | Averages rank scores across all judges and returns sorted results |
+| `judge_all`           | Async — runs all judges concurrently, collects per-judge rankings, and computes averaged final ranking |
 
 ### display.py
 
