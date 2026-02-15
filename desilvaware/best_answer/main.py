@@ -54,7 +54,7 @@ def clarify_question(question: str) -> str:
             display("*No answer provided — proceeding with the current question.*")
             return current_question
 
-        # Ask GPT-4o-mini to refine the question using the clarification
+        # Ask GPT-5.2 to refine the question using the clarification
         refine_response = client.chat.completions.create(
             model="gpt-5.2",
             messages=[
@@ -91,7 +91,7 @@ def has_api_key(provider: Provider) -> bool:
 
 
 async def main():
-    """Orchestrate the arena: generate a question, query all providers concurrently, and judge."""
+    """Orchestrate the arena: get a user question, query all providers concurrently, and judge."""
     validate_api_keys()
 
     question = get_user_question()
@@ -147,6 +147,12 @@ async def main():
     display("## Final Averaged Rankings\n")
     for position, (avg_rank, name) in enumerate(averaged, start=1):
         display(f"**{position}.** {name} (avg rank: {avg_rank:.2f})")
+
+    # Display the winning response
+    if averaged:
+        _, winner_name = averaged[0]
+        winner_idx = competitors.index(winner_name)
+        display(f"## Winning Response — {winner_name}\n\n{answers[winner_idx]}")
 
 
 if __name__ == "__main__":
