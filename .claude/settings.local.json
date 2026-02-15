@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/stevedesilva/workspace/silvade/llm_agents diff 1_foundations/lab1/start.py)",
+      "Bash(git -C /Users/stevedesilva/workspace/silvade/llm_agents status:*)",
+      "Bash(git -C /Users/stevedesilva/workspace/silvade/llm_agents log --oneline -3)",
+      "Bash(uv run:*)",
+      "Bash(git -C /Users/stevedesilva/workspace/silvade/llm_agents diff 1_foundations/lab2/main.py)",
+      "Bash(git push)",
+      "Bash(git pull:*)",
+      "Bash(uv add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRefactor lab2/main.py to reduce duplication and improve structure\n\n- Replace repetitive API key checks with data-driven loop\n- Rename init_client\\(\\) to print_api_key_status\\(\\) for clarity\n- Add create_client\\(\\) and pass client via dependency injection\n- Remove unused variables \\(competitors, answers, messages\\)\n- Fix model typo: gpt-5-mini -> gpt-4o-mini\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd pyppeteer dependency for browser automation\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(code --command claude-code.open:*)",
+      "Bash(code --command:*)",
+      "Bash(echo:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

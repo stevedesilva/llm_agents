@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(uv run python:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRefactor lab2/main.py into modular structure with bug fixes\n\nSplit monolithic main.py into display.py, providers.py, judge.py, and a\nthin main.py orchestrator. Uses a data-driven Provider dataclass to\neliminate 6 repetitive provider blocks, fixes missing imports \\(Anthropic,\njson\\), shadowed variable names, undefined judge variable, and\ndouble-wrapped Markdown display calls.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(cursor:*)",
+      "Bash(/Applications/Cursor.app/Contents/Resources/app/bin/cursor:*)"
+    ]
+  }
+}
