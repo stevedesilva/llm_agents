@@ -27,6 +27,14 @@ class Provider:
 
 PROVIDERS: list[Provider] = [
     Provider(
+        name="GPT-5.2",
+        model="gpt-5.2",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
         name="GPT-5-mini",
         model="gpt-5-mini",
         kind="openai",
@@ -35,23 +43,15 @@ PROVIDERS: list[Provider] = [
         optional=False,
     ),
     Provider(
-        name="GPT-5-nano",
-        model="gpt-5-nano",
-        kind="openai",
-        env_var="OPENAI_API_KEY",
-        prefix_len=8,
-        optional=False,
-    ),
-    Provider(
-        name="Claude Sonnet 4.5",
-        model="claude-sonnet-4-5",
+        name="Claude Opus 4.6",
+        model="claude-opus-4-6",
         kind="anthropic",
         env_var="ANTHROPIC_API_KEY",
         prefix_len=7,
     ),
     Provider(
-        name="Gemini 2.5 Flash",
-        model="gemini-2.5-flash",
+        name="Gemini 3.0 Flash",
+        model="gemini-3.0-flash",
         kind="openai",
         env_var="GOOGLE_API_KEY",
         prefix_len=2,
@@ -73,14 +73,14 @@ PROVIDERS: list[Provider] = [
         prefix_len=4,
         base_url="https://api.groq.com/openai/v1",
     ),
-    Provider(
-        name="Ollama Llama 3.2",
-        model="llama3.2",
-        kind="openai",
-        env_var="",
-        base_url="http://localhost:11434/v1",
-        api_key_value="ollama",
-    ),
+    # Provider(
+    #     name="Ollama Llama 4",
+    #     model="llama4",
+    #     kind="openai",
+    #     env_var="",
+    #     base_url="http://localhost:11434/v1",
+    #     api_key_value="ollama",
+    # ),
 ]
 
 
