@@ -23,13 +23,13 @@ def get_user_question() -> str:
 
 
 def clarify_question(question: str) -> str:
-    """Use GPT-4o-mini to iteratively clarify the user's question until it is clear."""
+    """Use GPT-5.2 to iteratively clarify the user's question until it is clear."""
     client = OpenAI()
     current_question = question
 
     for _ in range(MAX_CLARIFICATION_ROUNDS):
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.2",
             messages=[
                 {
                     "role": "system",
@@ -56,7 +56,7 @@ def clarify_question(question: str) -> str:
 
         # Ask GPT-4o-mini to refine the question using the clarification
         refine_response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-5.2",
             messages=[
                 {
                     "role": "system",
