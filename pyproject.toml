@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.76.0",
+    "gradio>=6.5.1",
     "langchain>=1.2.6",
     "openai>=2.15.0",
     "pyppeteer>=2.0.0",

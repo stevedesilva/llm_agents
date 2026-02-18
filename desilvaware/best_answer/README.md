@@ -56,6 +56,7 @@ lab2/
 
 ```bash
 uv run python main.py
+uv run python desilvaware/best_answer/main.py 
 ```
 
 Requires at least `OPENAI_API_KEY` in a `.env` file. Other provider keys are optional.
