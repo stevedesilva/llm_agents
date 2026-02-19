@@ -4,7 +4,7 @@ import asyncio
 import json
 import re
 
-from providers import Provider, query_provider
+from arena.providers import QUERY_TIMEOUT, Provider, query_provider
 
 
 def build_judge_prompt(question: str, competitors: list[str], answers: list[str]) -> str:
@@ -29,17 +29,14 @@ def build_judge_prompt(question: str, competitors: list[str], answers: list[str]
 
 def extract_json(text: str) -> str:
     """Extract a JSON object from text that may contain markdown fences or surrounding prose."""
-    # Try the raw text first
     stripped = text.strip()
     if stripped.startswith("{"):
         return stripped
 
-    # Strip markdown code fences (```json ... ``` or ``` ... ```)
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", stripped, re.DOTALL)
     if match:
         return match.group(1)
 
-    # Find the first { ... } substring
     match = re.search(r"\{.*\}", stripped, re.DOTALL)
     if match:
         return match.group(0)
@@ -50,15 +47,36 @@ def extract_json(text: str) -> str:
 def parse_ranking(
     response_text: str, competitors: list[str]
 ) -> list[tuple[int, str]]:
-    """Parse a judge's JSON response into (rank, competitor_name) tuples."""
-    json_str = extract_json(response_text)
-    results_dict = json.loads(json_str)
-    ranks = results_dict["results"]
+    """Parse a judge's JSON response into (rank, competitor_name) tuples.
 
+    Raises ValueError with diagnostic info if the response is malformed.
+    """
+    json_str = extract_json(response_text)
+    try:
+        results_dict = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Judge returned invalid JSON: {e}\nRaw: {response_text!r}"
+        ) from e
+
+    if "results" not in results_dict:
+        raise ValueError(f"Judge JSON missing 'results' key. Got: {results_dict}")
+
+    ranks = results_dict["results"]
+    n = len(competitors)
     ranked: list[tuple[int, str]] = []
     for rank_index, competitor_number in enumerate(ranks):
-        competitor = competitors[int(competitor_number) - 1]
-        ranked.append((rank_index + 1, competitor))
+        try:
+            idx = int(competitor_number) - 1
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"Non-integer rank value: {competitor_number!r}"
+            ) from e
+        if not (0 <= idx < n):
+            raise ValueError(
+                f"Rank index {idx + 1} out of range [1, {n}]"
+            )
+        ranked.append((rank_index + 1, competitors[idx]))
 
     return ranked
 
@@ -112,10 +130,16 @@ async def judge_all(
 
     async def _judge_one(provider: Provider) -> tuple[str, list[tuple[int, str]]]:
         try:
-            ranking = await asyncio.to_thread(
-                judge_answers, provider, question, competitors, answers
+            ranking = await asyncio.wait_for(
+                asyncio.to_thread(
+                    judge_answers, provider, question, competitors, answers
+                ),
+                timeout=QUERY_TIMEOUT,
             )
             return provider.name, ranking
+        except asyncio.TimeoutError:
+            print(f"Warning: {provider.name} timed out after {QUERY_TIMEOUT}s")
+            return provider.name, []
         except Exception as e:
             print(f"Warning: {provider.name} failed to judge: {e}")
             return provider.name, []

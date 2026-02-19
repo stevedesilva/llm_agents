@@ -1,16 +1,64 @@
-"""LLM Arena — pits multiple LLM providers against each other on a generated question and ranks them."""
+"""LLM Arena — pits multiple LLM providers against each other on a user question and ranks them."""
 
 import asyncio
-import os
 import sys
 
+from dotenv import load_dotenv
 from openai import OpenAI
 
-from display import display
-from judge import judge_all
-from providers import PROVIDERS, Provider, query_provider, validate_api_keys
+from arena import Provider, display, judge_all, query_provider, validate_api_keys
 
 MAX_CLARIFICATION_ROUNDS = 5
+
+PROVIDERS: list[Provider] = [
+    Provider(
+        name="GPT-5.2",
+        model="gpt-5.2",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="GPT-5-mini",
+        model="gpt-5-mini",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="Claude Opus 4.6",
+        model="claude-opus-4-6",
+        kind="anthropic",
+        env_var="ANTHROPIC_API_KEY",
+        prefix_len=7,
+    ),
+    Provider(
+        name="Gemini 3.0 Flash",
+        model="gemini-3.0-flash",
+        kind="openai",
+        env_var="GOOGLE_API_KEY",
+        prefix_len=2,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    ),
+    Provider(
+        name="DeepSeek Chat",
+        model="deepseek-chat",
+        kind="openai",
+        env_var="DEEPSEEK_API_KEY",
+        prefix_len=3,
+        base_url="https://api.deepseek.com/v1",
+    ),
+    Provider(
+        name="Groq GPT-OSS-120B",
+        model="openai/gpt-oss-120b",
+        kind="openai",
+        env_var="GROQ_API_KEY",
+        prefix_len=4,
+        base_url="https://api.groq.com/openai/v1",
+    ),
+]
 
 
 def get_user_question() -> str:
@@ -54,7 +102,6 @@ def clarify_question(question: str) -> str:
             display("*No answer provided — proceeding with the current question.*")
             return current_question
 
-        # Ask GPT-5.2 to refine the question using the clarification
         refine_response = client.chat.completions.create(
             model="gpt-5.2",
             messages=[
@@ -81,36 +128,32 @@ def clarify_question(question: str) -> str:
     return current_question
 
 
-def has_api_key(provider: Provider) -> bool:
-    """Check whether a provider's API key is available without making an API call."""
-    if provider.api_key_value:
-        return True
-    if not provider.env_var:
-        return True
-    return bool(os.getenv(provider.env_var))
-
-
-async def main():
+async def main() -> None:
     """Orchestrate the arena: get a user question, query all providers concurrently, and judge."""
+    load_dotenv()
     validate_api_keys()
 
     question = get_user_question()
     question = clarify_question(question)
     display(f"## Final Question\n\n{question}")
 
-    # Filter to providers with available keys
-    available = [p for p in PROVIDERS if has_api_key(p)]
-    skipped = [p for p in PROVIDERS if not has_api_key(p)]
+    available = [p for p in PROVIDERS if p.has_api_key()]
+    skipped = [p for p in PROVIDERS if not p.has_api_key()]
     for p in skipped:
         display(f"*Skipping {p.name} — API key not set*")
 
-    # Query all available providers concurrently
     display("### Querying all providers concurrently...")
 
     async def _query_one(provider: Provider) -> tuple[Provider, str | None]:
         try:
-            answer = await asyncio.to_thread(query_provider, provider, question)
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(query_provider, provider, question),
+                timeout=30.0,
+            )
             return provider, answer
+        except asyncio.TimeoutError:
+            display(f"**{provider.name} timed out**")
+            return provider, None
         except Exception as e:
             display(f"**Error querying {provider.name}:** {e}")
             return provider, None
@@ -133,7 +176,6 @@ async def main():
         display("**Not enough competitors to judge (need at least 2).**")
         return
 
-    # Judge concurrently
     display("## Judging (each model judges all answers concurrently)...")
     per_judge, averaged = await judge_all(question, competitors, answers, judges)
 
@@ -148,7 +190,6 @@ async def main():
     for position, (avg_rank, name) in enumerate(averaged, start=1):
         display(f"**{position}.** {name} (avg rank: {avg_rank:.2f})")
 
-    # Display the winning response
     if averaged:
         _, winner_name = averaged[0]
         winner_idx = competitors.index(winner_name)

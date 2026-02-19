@@ -1,37 +1,84 @@
 """Gradio UI for the LLM Arena — chat-style question clarification + arena results."""
 
 import asyncio
-import os
-import sys
 
 import gradio as gr
+from dotenv import load_dotenv
 from openai import OpenAI
 
-# Ensure local imports resolve when running from the project root.
-sys.path.insert(0, os.path.dirname(__file__))
-
-from judge import judge_all  # noqa: E402
-from providers import PROVIDERS, Provider, query_provider, validate_api_keys  # noqa: E402
+from arena import Provider, judge_all, query_provider, validate_api_keys
 
 MAX_CLARIFICATION_ROUNDS = 5
 
+PROVIDERS: list[Provider] = [
+    Provider(
+        name="GPT-5.2",
+        model="gpt-5.2",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="GPT-5-mini",
+        model="gpt-5-mini",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="Claude Opus 4.6",
+        model="claude-opus-4-6",
+        kind="anthropic",
+        env_var="ANTHROPIC_API_KEY",
+        prefix_len=7,
+    ),
+    Provider(
+        name="Gemini 3.0 Flash",
+        model="gemini-3.0-flash",
+        kind="openai",
+        env_var="GOOGLE_API_KEY",
+        prefix_len=2,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    ),
+    Provider(
+        name="DeepSeek Chat",
+        model="deepseek-chat",
+        kind="openai",
+        env_var="DEEPSEEK_API_KEY",
+        prefix_len=3,
+        base_url="https://api.deepseek.com/v1",
+    ),
+    Provider(
+        name="Groq GPT-OSS-120B",
+        model="openai/gpt-oss-120b",
+        kind="openai",
+        env_var="GROQ_API_KEY",
+        prefix_len=4,
+        base_url="https://api.groq.com/openai/v1",
+    ),
+]
 
-def has_api_key(provider: Provider) -> bool:
-    """Check whether a provider's API key is available without making an API call."""
-    if provider.api_key_value:
-        return True
-    if not provider.env_var:
-        return True
-    return bool(os.getenv(provider.env_var))
+_openai_client: OpenAI | None = None
+
+
+def _get_openai() -> OpenAI:
+    """Return a module-level OpenAI client singleton."""
+    global _openai_client
+    if _openai_client is None:
+        _openai_client = OpenAI()
+    return _openai_client
 
 
 # ---------------------------------------------------------------------------
 # Clarification helpers
 # ---------------------------------------------------------------------------
 
+
 def check_clarity(question: str) -> str:
     """Ask GPT-5.2 whether the question is clear. Returns 'CLEAR' or clarifying questions."""
-    client = OpenAI()
+    client = _get_openai()
     response = client.chat.completions.create(
         model="gpt-5.2",
         messages=[
@@ -52,7 +99,7 @@ def check_clarity(question: str) -> str:
 
 def refine_question(current_question: str, user_answer: str) -> str:
     """Ask GPT-5.2 to rewrite the question incorporating clarifying answers."""
-    client = OpenAI()
+    client = _get_openai()
     response = client.chat.completions.create(
         model="gpt-5.2",
         messages=[
@@ -80,16 +127,22 @@ def refine_question(current_question: str, user_answer: str) -> str:
 # Arena runner
 # ---------------------------------------------------------------------------
 
+
 async def run_arena(question: str) -> tuple[str, str, str, str]:
     """Run the full arena and return (final_question_md, answers_md, rankings_md, winner_md)."""
-    available = [p for p in PROVIDERS if has_api_key(p)]
-    skipped = [p for p in PROVIDERS if not has_api_key(p)]
+    available = [p for p in PROVIDERS if p.has_api_key()]
+    skipped = [p for p in PROVIDERS if not p.has_api_key()]
 
     async def _query_one(provider: Provider) -> tuple[Provider, str | None]:
         try:
-            answer = await asyncio.to_thread(query_provider, provider, question)
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(query_provider, provider, question),
+                timeout=30.0,
+            )
             return provider, answer
-        except Exception as e:
+        except asyncio.TimeoutError:
+            return provider, None
+        except Exception:
             return provider, None
 
     results = await asyncio.gather(*[_query_one(p) for p in available])
@@ -150,6 +203,7 @@ async def run_arena(question: str) -> tuple[str, str, str, str]:
 # Gradio UI
 # ---------------------------------------------------------------------------
 
+
 def build_ui() -> gr.Blocks:
     with gr.Blocks(title="LLM Arena") as demo:
         gr.Markdown("# LLM Arena")
@@ -185,16 +239,15 @@ def build_ui() -> gr.Blocks:
         # Handlers
         # ------------------------------------------------------------------
 
-        def on_submit(user_message, chat_history, question, clear, rounds):
+        async def on_submit(user_message, chat_history, question, clear, rounds):
             if not user_message.strip():
                 return chat_history, "", question, clear, rounds, gr.update(interactive=False)
 
             chat_history = chat_history + [{"role": "user", "content": user_message}]
 
             if not question:
-                # First message — this is the question
                 question = user_message.strip()
-                reply = check_clarity(question)
+                reply = await asyncio.to_thread(check_clarity, question)
                 rounds += 1
 
                 if reply.upper() == "CLEAR":
@@ -206,20 +259,19 @@ def build_ui() -> gr.Blocks:
                     chat_history.append({"role": "assistant", "content": reply})
                     return chat_history, "", question, False, rounds, gr.update(interactive=False)
             else:
-                # Follow-up — user answering clarifying questions
                 if rounds >= MAX_CLARIFICATION_ROUNDS:
                     chat_history.append(
                         {"role": "assistant", "content": f"Maximum clarification rounds reached. Proceeding with:\n\n**{question}**\n\nClick **Run Arena** to proceed."}
                     )
                     return chat_history, "", question, True, rounds, gr.update(interactive=True)
 
-                refined = refine_question(question, user_message.strip())
+                refined = await asyncio.to_thread(refine_question, question, user_message.strip())
                 question = refined
                 chat_history.append(
                     {"role": "assistant", "content": f"Refined question: **{refined}**"}
                 )
 
-                reply = check_clarity(refined)
+                reply = await asyncio.to_thread(check_clarity, refined)
                 rounds += 1
 
                 if reply.upper() == "CLEAR":
@@ -254,6 +306,7 @@ def build_ui() -> gr.Blocks:
 
 
 if __name__ == "__main__":
+    load_dotenv()
     validate_api_keys()
     app = build_ui()
     app.launch()

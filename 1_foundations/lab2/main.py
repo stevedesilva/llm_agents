@@ -1,13 +1,69 @@
 """LLM Arena — pits multiple LLM providers against each other on a generated question and ranks them."""
 
 import asyncio
-import os
 
+from dotenv import load_dotenv
 from openai import OpenAI
 
-from display import display
-from judge import judge_all
-from providers import PROVIDERS, Provider, query_provider, validate_api_keys
+from arena import Provider, display, judge_all, query_provider, validate_api_keys
+
+PROVIDERS: list[Provider] = [
+    Provider(
+        name="GPT-5-mini",
+        model="gpt-5-mini",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="GPT-5-nano",
+        model="gpt-5-nano",
+        kind="openai",
+        env_var="OPENAI_API_KEY",
+        prefix_len=8,
+        optional=False,
+    ),
+    Provider(
+        name="Claude Sonnet 4.5",
+        model="claude-sonnet-4-5",
+        kind="anthropic",
+        env_var="ANTHROPIC_API_KEY",
+        prefix_len=7,
+    ),
+    Provider(
+        name="Gemini 2.5 Flash",
+        model="gemini-2.5-flash",
+        kind="openai",
+        env_var="GOOGLE_API_KEY",
+        prefix_len=2,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+    ),
+    Provider(
+        name="DeepSeek Chat",
+        model="deepseek-chat",
+        kind="openai",
+        env_var="DEEPSEEK_API_KEY",
+        prefix_len=3,
+        base_url="https://api.deepseek.com/v1",
+    ),
+    Provider(
+        name="Groq GPT-OSS-120B",
+        model="openai/gpt-oss-120b",
+        kind="openai",
+        env_var="GROQ_API_KEY",
+        prefix_len=4,
+        base_url="https://api.groq.com/openai/v1",
+    ),
+    Provider(
+        name="Ollama Llama 3.2",
+        model="llama3.2",
+        kind="openai",
+        env_var="",
+        base_url="http://localhost:11434/v1",
+        api_key_value="ollama",
+    ),
+]
 
 
 def generate_question() -> str:
@@ -25,35 +81,31 @@ def generate_question() -> str:
     return response.choices[0].message.content or ""
 
 
-def has_api_key(provider: Provider) -> bool:
-    """Check whether a provider's API key is available without making an API call."""
-    if provider.api_key_value:
-        return True
-    if not provider.env_var:
-        return True
-    return bool(os.getenv(provider.env_var))
-
-
-async def main():
+async def main() -> None:
     """Orchestrate the arena: generate a question, query all providers concurrently, and judge."""
+    load_dotenv()
     validate_api_keys()
 
     question = generate_question()
     display(f"## Question\n\n{question}")
 
-    # Filter to providers with available keys
-    available = [p for p in PROVIDERS if has_api_key(p)]
-    skipped = [p for p in PROVIDERS if not has_api_key(p)]
+    available = [p for p in PROVIDERS if p.has_api_key()]
+    skipped = [p for p in PROVIDERS if not p.has_api_key()]
     for p in skipped:
         display(f"*Skipping {p.name} — API key not set*")
 
-    # Query all available providers concurrently
     display("### Querying all providers concurrently...")
 
     async def _query_one(provider: Provider) -> tuple[Provider, str | None]:
         try:
-            answer = await asyncio.to_thread(query_provider, provider, question)
+            answer = await asyncio.wait_for(
+                asyncio.to_thread(query_provider, provider, question),
+                timeout=30.0,
+            )
             return provider, answer
+        except asyncio.TimeoutError:
+            display(f"**{provider.name} timed out**")
+            return provider, None
         except Exception as e:
             display(f"**Error querying {provider.name}:** {e}")
             return provider, None
@@ -76,7 +128,6 @@ async def main():
         display("**Not enough competitors to judge (need at least 2).**")
         return
 
-    # Judge concurrently
     display("## Judging (each model judges all answers concurrently)...")
     per_judge, averaged = await judge_all(question, competitors, answers, judges)
 
