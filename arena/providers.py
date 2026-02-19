@@ -9,6 +9,7 @@ from anthropic import Anthropic
 from openai import OpenAI
 
 QUERY_TIMEOUT = 30.0
+MAX_INPUT_LENGTH = 2000
 
 
 @dataclass
@@ -19,7 +20,6 @@ class Provider:
     model: str
     kind: Literal["openai", "anthropic"]
     env_var: str
-    prefix_len: int = 8
     optional: bool = True
     base_url: str | None = None
     api_key_value: str | None = None
@@ -27,10 +27,10 @@ class Provider:
 
     def has_api_key(self) -> bool:
         """Return True if an API key is available for this provider."""
-        if self.api_key_value:
+        if self.api_key_value is not None:
             return True
         if not self.env_var:
-            return True
+            return False
         return bool(os.getenv(self.env_var))
 
 
@@ -46,18 +46,15 @@ def _get_openai_client(base_url: str | None, api_key: str | None) -> OpenAI:
 
 
 @lru_cache(maxsize=None)
-def _get_anthropic_client(api_key: str) -> Anthropic:
+def _get_anthropic_client(api_key: str | None) -> Anthropic:
     """Return a cached Anthropic client for the given api_key."""
     return Anthropic(api_key=api_key)
 
 
-def validate_api_keys() -> None:
-    """Print API key status for each unique env_var across all providers.
-
-    Note: Does not log key prefixes to avoid leaking secrets in CI/logs.
-    """
+def validate_api_keys(providers: list["Provider"]) -> None:
+    """Print API key status for each unique env_var across the given providers."""
     seen: set[str] = set()
-    for provider in _all_providers():
+    for provider in providers:
         env_var = provider.env_var
         if not env_var or env_var in seen:
             continue
@@ -72,12 +69,6 @@ def validate_api_keys() -> None:
             print(f"{env_var} not set")
 
 
-def _all_providers() -> list["Provider"]:
-    """Import-safe accessor — avoids circular imports when called from outside."""
-    # This is overridden by each entry point's PROVIDERS list.
-    return []
-
-
 def query_provider(provider: Provider, question: str) -> str | None:
     """Query a provider and return the answer, or None if the key is missing."""
     api_key = provider.api_key_value or os.getenv(provider.env_var)
@@ -88,7 +79,7 @@ def query_provider(provider: Provider, question: str) -> str | None:
     messages: list[dict[str, str]] = [{"role": "user", "content": question}]
 
     if provider.kind == "anthropic":
-        client = _get_anthropic_client(api_key=api_key)  # type: ignore[arg-type]
+        client = _get_anthropic_client(api_key=api_key)
         response = client.messages.create(
             model=provider.model,
             messages=messages,

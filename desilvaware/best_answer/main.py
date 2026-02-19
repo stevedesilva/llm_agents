@@ -6,7 +6,7 @@ import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from arena import Provider, display, judge_all, query_provider, validate_api_keys
+from arena import QUERY_TIMEOUT, Provider, display, judge_all, query_provider, validate_api_keys
 
 MAX_CLARIFICATION_ROUNDS = 5
 
@@ -16,7 +16,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5.2",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -24,7 +23,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5-mini",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -32,14 +30,12 @@ PROVIDERS: list[Provider] = [
         model="claude-opus-4-6",
         kind="anthropic",
         env_var="ANTHROPIC_API_KEY",
-        prefix_len=7,
     ),
     Provider(
         name="Gemini 3.0 Flash",
         model="gemini-3.0-flash",
         kind="openai",
         env_var="GOOGLE_API_KEY",
-        prefix_len=2,
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     ),
     Provider(
@@ -47,7 +43,6 @@ PROVIDERS: list[Provider] = [
         model="deepseek-chat",
         kind="openai",
         env_var="DEEPSEEK_API_KEY",
-        prefix_len=3,
         base_url="https://api.deepseek.com/v1",
     ),
     Provider(
@@ -55,7 +50,6 @@ PROVIDERS: list[Provider] = [
         model="openai/gpt-oss-120b",
         kind="openai",
         env_var="GROQ_API_KEY",
-        prefix_len=4,
         base_url="https://api.groq.com/openai/v1",
     ),
 ]
@@ -90,6 +84,7 @@ def clarify_question(question: str) -> str:
                 },
                 {"role": "user", "content": current_question},
             ],
+            max_tokens=500,
         )
         reply = (response.choices[0].message.content or "").strip()
 
@@ -117,10 +112,11 @@ def clarify_question(question: str) -> str:
                     "role": "user",
                     "content": (
                         f"Original question: {current_question}\n"
-                        f"Clarifying answers: {user_answer}"
+                        f"Clarifying answers: {user_answer[:500]}"
                     ),
                 },
             ],
+            max_tokens=500,
         )
         current_question = (refine_response.choices[0].message.content or "").strip()
         display(f"### Refined question\n\n{current_question}")
@@ -131,10 +127,10 @@ def clarify_question(question: str) -> str:
 async def main() -> None:
     """Orchestrate the arena: get a user question, query all providers concurrently, and judge."""
     load_dotenv()
-    validate_api_keys()
+    validate_api_keys(PROVIDERS)
 
     question = get_user_question()
-    question = clarify_question(question)
+    question = await asyncio.to_thread(clarify_question, question)
     display(f"## Final Question\n\n{question}")
 
     available = [p for p in PROVIDERS if p.has_api_key()]
@@ -148,7 +144,7 @@ async def main() -> None:
         try:
             answer = await asyncio.wait_for(
                 asyncio.to_thread(query_provider, provider, question),
-                timeout=30.0,
+                timeout=QUERY_TIMEOUT,
             )
             return provider, answer
         except asyncio.TimeoutError:

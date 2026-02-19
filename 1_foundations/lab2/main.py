@@ -5,7 +5,7 @@ import asyncio
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from arena import Provider, display, judge_all, query_provider, validate_api_keys
+from arena import QUERY_TIMEOUT, Provider, display, judge_all, query_provider, validate_api_keys
 
 PROVIDERS: list[Provider] = [
     Provider(
@@ -13,7 +13,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5-mini",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -21,7 +20,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5-nano",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -29,14 +27,12 @@ PROVIDERS: list[Provider] = [
         model="claude-sonnet-4-5",
         kind="anthropic",
         env_var="ANTHROPIC_API_KEY",
-        prefix_len=7,
     ),
     Provider(
         name="Gemini 2.5 Flash",
         model="gemini-2.5-flash",
         kind="openai",
         env_var="GOOGLE_API_KEY",
-        prefix_len=2,
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     ),
     Provider(
@@ -44,7 +40,6 @@ PROVIDERS: list[Provider] = [
         model="deepseek-chat",
         kind="openai",
         env_var="DEEPSEEK_API_KEY",
-        prefix_len=3,
         base_url="https://api.deepseek.com/v1",
     ),
     Provider(
@@ -52,7 +47,6 @@ PROVIDERS: list[Provider] = [
         model="openai/gpt-oss-120b",
         kind="openai",
         env_var="GROQ_API_KEY",
-        prefix_len=4,
         base_url="https://api.groq.com/openai/v1",
     ),
     Provider(
@@ -84,7 +78,7 @@ def generate_question() -> str:
 async def main() -> None:
     """Orchestrate the arena: generate a question, query all providers concurrently, and judge."""
     load_dotenv()
-    validate_api_keys()
+    validate_api_keys(PROVIDERS)
 
     question = generate_question()
     display(f"## Question\n\n{question}")
@@ -100,7 +94,7 @@ async def main() -> None:
         try:
             answer = await asyncio.wait_for(
                 asyncio.to_thread(query_provider, provider, question),
-                timeout=30.0,
+                timeout=QUERY_TIMEOUT,
             )
             return provider, answer
         except asyncio.TimeoutError:

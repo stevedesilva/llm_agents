@@ -6,7 +6,8 @@ import gradio as gr
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from arena import Provider, judge_all, query_provider, validate_api_keys
+from arena import QUERY_TIMEOUT, Provider, judge_all, query_provider, validate_api_keys
+from arena.providers import MAX_INPUT_LENGTH
 
 MAX_CLARIFICATION_ROUNDS = 5
 
@@ -16,7 +17,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5.2",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -24,7 +24,6 @@ PROVIDERS: list[Provider] = [
         model="gpt-5-mini",
         kind="openai",
         env_var="OPENAI_API_KEY",
-        prefix_len=8,
         optional=False,
     ),
     Provider(
@@ -32,14 +31,12 @@ PROVIDERS: list[Provider] = [
         model="claude-opus-4-6",
         kind="anthropic",
         env_var="ANTHROPIC_API_KEY",
-        prefix_len=7,
     ),
     Provider(
         name="Gemini 3.0 Flash",
         model="gemini-3.0-flash",
         kind="openai",
         env_var="GOOGLE_API_KEY",
-        prefix_len=2,
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
     ),
     Provider(
@@ -47,7 +44,6 @@ PROVIDERS: list[Provider] = [
         model="deepseek-chat",
         kind="openai",
         env_var="DEEPSEEK_API_KEY",
-        prefix_len=3,
         base_url="https://api.deepseek.com/v1",
     ),
     Provider(
@@ -55,7 +51,6 @@ PROVIDERS: list[Provider] = [
         model="openai/gpt-oss-120b",
         kind="openai",
         env_var="GROQ_API_KEY",
-        prefix_len=4,
         base_url="https://api.groq.com/openai/v1",
     ),
 ]
@@ -91,8 +86,9 @@ def check_clarity(question: str) -> str:
                     "If not, ask 1-2 short clarifying questions to help refine it."
                 ),
             },
-            {"role": "user", "content": question},
+            {"role": "user", "content": question[:MAX_INPUT_LENGTH]},
         ],
+        max_tokens=500,
     )
     return (response.choices[0].message.content or "").strip()
 
@@ -114,11 +110,12 @@ def refine_question(current_question: str, user_answer: str) -> str:
             {
                 "role": "user",
                 "content": (
-                    f"Original question: {current_question}\n"
-                    f"Clarifying answers: {user_answer}"
+                    f"Original question: {current_question[:MAX_INPUT_LENGTH]}\n"
+                    f"Clarifying answers: {user_answer[:500]}"
                 ),
             },
         ],
+        max_tokens=500,
     )
     return (response.choices[0].message.content or "").strip()
 
@@ -130,6 +127,7 @@ def refine_question(current_question: str, user_answer: str) -> str:
 
 async def run_arena(question: str) -> tuple[str, str, str, str]:
     """Run the full arena and return (final_question_md, answers_md, rankings_md, winner_md)."""
+    question = question[:MAX_INPUT_LENGTH].strip()
     available = [p for p in PROVIDERS if p.has_api_key()]
     skipped = [p for p in PROVIDERS if not p.has_api_key()]
 
@@ -137,7 +135,7 @@ async def run_arena(question: str) -> tuple[str, str, str, str]:
         try:
             answer = await asyncio.wait_for(
                 asyncio.to_thread(query_provider, provider, question),
-                timeout=30.0,
+                timeout=QUERY_TIMEOUT,
             )
             return provider, answer
         except asyncio.TimeoutError:
@@ -246,7 +244,7 @@ def build_ui() -> gr.Blocks:
             chat_history = chat_history + [{"role": "user", "content": user_message}]
 
             if not question:
-                question = user_message.strip()
+                question = user_message.strip()[:MAX_INPUT_LENGTH]
                 reply = await asyncio.to_thread(check_clarity, question)
                 rounds += 1
 
@@ -265,8 +263,8 @@ def build_ui() -> gr.Blocks:
                     )
                     return chat_history, "", question, True, rounds, gr.update(interactive=True)
 
-                refined = await asyncio.to_thread(refine_question, question, user_message.strip())
-                question = refined
+                refined = await asyncio.to_thread(refine_question, question, user_message.strip()[:500])
+                question = refined[:MAX_INPUT_LENGTH]
                 chat_history.append(
                     {"role": "assistant", "content": f"Refined question: **{refined}**"}
                 )
@@ -307,6 +305,6 @@ def build_ui() -> gr.Blocks:
 
 if __name__ == "__main__":
     load_dotenv()
-    validate_api_keys()
+    validate_api_keys(PROVIDERS)
     app = build_ui()
-    app.launch()
+    app.launch(server_name="127.0.0.1", share=False)
