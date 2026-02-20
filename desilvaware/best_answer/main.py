@@ -6,53 +6,20 @@ import sys
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from arena import QUERY_TIMEOUT, Provider, display, judge_all, query_provider, validate_api_keys
+from arena import (
+    CLARIFICATION_MODEL,
+    DEFAULT_PROVIDERS,
+    MAX_CLARIFICATION_ROUNDS,
+    MAX_CLARIFY_ANSWER_LENGTH,
+    QUERY_TIMEOUT,
+    Provider,
+    display,
+    judge_all,
+    query_provider,
+    validate_api_keys,
+)
 
-MAX_CLARIFICATION_ROUNDS = 5
-
-PROVIDERS: list[Provider] = [
-    Provider(
-        name="GPT-5.2",
-        model="gpt-5.2",
-        kind="openai",
-        env_var="OPENAI_API_KEY",
-        optional=False,
-    ),
-    Provider(
-        name="GPT-5-mini",
-        model="gpt-5-mini",
-        kind="openai",
-        env_var="OPENAI_API_KEY",
-        optional=False,
-    ),
-    Provider(
-        name="Claude Opus 4.6",
-        model="claude-opus-4-6",
-        kind="anthropic",
-        env_var="ANTHROPIC_API_KEY",
-    ),
-    Provider(
-        name="Gemini 3.0 Flash",
-        model="gemini-3.0-flash",
-        kind="openai",
-        env_var="GOOGLE_API_KEY",
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-    ),
-    Provider(
-        name="DeepSeek Chat",
-        model="deepseek-chat",
-        kind="openai",
-        env_var="DEEPSEEK_API_KEY",
-        base_url="https://api.deepseek.com/v1",
-    ),
-    Provider(
-        name="Groq GPT-OSS-120B",
-        model="openai/gpt-oss-120b",
-        kind="openai",
-        env_var="GROQ_API_KEY",
-        base_url="https://api.groq.com/openai/v1",
-    ),
-]
+PROVIDERS = DEFAULT_PROVIDERS
 
 
 def get_user_question() -> str:
@@ -71,7 +38,7 @@ def clarify_question(question: str) -> str:
 
     for _ in range(MAX_CLARIFICATION_ROUNDS):
         response = client.chat.completions.create(
-            model="gpt-5.2",
+            model=CLARIFICATION_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -98,7 +65,7 @@ def clarify_question(question: str) -> str:
             return current_question
 
         refine_response = client.chat.completions.create(
-            model="gpt-5.2",
+            model=CLARIFICATION_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -112,7 +79,7 @@ def clarify_question(question: str) -> str:
                     "role": "user",
                     "content": (
                         f"Original question: {current_question}\n"
-                        f"Clarifying answers: {user_answer[:500]}"
+                        f"Clarifying answers: {user_answer[:MAX_CLARIFY_ANSWER_LENGTH]}"
                     ),
                 },
             ],
