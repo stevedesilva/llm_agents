@@ -78,6 +78,17 @@ API keys go in `.env` (copy from `.env.example`):
 
 Ollama requires no key but needs a local server on port 11434.
 
+## After Every Code Change
+
+Run the following to validate the build before committing:
+
+```bash
+uv run ruff check .
+uv run pytest
+```
+
+Both must pass with no errors.
+
 ## Testing
 
 Tests live in `tests/` and import from `arena/`. `conftest.py` provides `Provider` fixtures and clears `lru_cache` between tests to prevent cross-test contamination. Tests use `pytest-asyncio` in strict mode (`asyncio_mode = "strict"` in `pyproject.toml`).
