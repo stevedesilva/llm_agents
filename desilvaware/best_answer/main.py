@@ -51,7 +51,7 @@ def clarify_question(question: str) -> str:
                 },
                 {"role": "user", "content": current_question},
             ],
-            max_tokens=500,
+            max_completion_tokens=500,
         )
         reply = (response.choices[0].message.content or "").strip()
 
@@ -83,7 +83,7 @@ def clarify_question(question: str) -> str:
                     ),
                 },
             ],
-            max_tokens=500,
+            max_completion_tokens=500,
         )
         current_question = (refine_response.choices[0].message.content or "").strip()
         display(f"### Refined question\n\n{current_question}")

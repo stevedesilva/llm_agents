@@ -42,7 +42,7 @@ def check_clarity(question: str) -> str:
             },
             {"role": "user", "content": question[:MAX_INPUT_LENGTH]},
         ],
-        max_tokens=500,
+        max_completion_tokens=500,
     )
     return (response.choices[0].message.content or "").strip()
 
@@ -69,7 +69,7 @@ def refine_question(current_question: str, user_answer: str) -> str:
                 ),
             },
         ],
-        max_tokens=500,
+        max_completion_tokens=500,
     )
     return (response.choices[0].message.content or "").strip()
 
