@@ -1,41 +1,78 @@
-# Lab 2 — LLM Arena
+# LLM Arena
 
-An LLM arena that generates a challenging question, sends it to multiple LLM providers, and has every provider judge all answers. Individual rankings are averaged into a final result.
+An LLM arena that clarifies your question, sends it to multiple LLM providers concurrently, and has every provider judge all answers. Individual rankings are averaged into a final leaderboard.
 
 ## How It Works
 
-1. **Generate** — OpenAI (`gpt-4o-mini`) creates a challenging question.
+1. **Clarify** — The clarification model iteratively refines your question until it is clear and specific.
 2. **Query** — All configured providers are queried **concurrently** using `asyncio.gather`.
 3. **Judge** — Every provider that answered also serves as a judge, ranking all responses **concurrently**. Individual rankings are averaged to produce a final leaderboard.
+
+## Running
+
+### Gradio Web UI
+
+```bash
+uv run python desilvaware/best_answer/app.py
+```
+
+Opens at `http://127.0.0.1:7860`. Features:
+
+- Provider status bar showing which API keys are configured
+- Chat-based question clarification before running the arena
+- Collapsible answers with per-provider response timing
+- Detailed error reasons (timeout, auth failure, etc.)
+- Question history dropdown to re-run previous questions
+- "New Question" button to reset and start over
+
+### CLI
+
+```bash
+uv run python desilvaware/best_answer/main.py
+```
+
+Interactive terminal version with Rich markdown output.
+
+### Prerequisites
+
+Requires at least `OPENAI_API_KEY` in a `.env` file. Other provider keys are optional — see `.env.example`.
 
 ## File Structure
 
 ```
-lab2/
-├── main.py        # Entry point — orchestrates question generation, querying, and judging
-├── providers.py   # Provider dataclass, provider list, API-key validation, and query logic
+desilvaware/best_answer/
+├── app.py         # Gradio web UI entry point
+├── main.py        # CLI entry point
+└── README.md
+
+arena/              # Shared library (used by both entry points)
+├── __init__.py
+├── config.py      # Default providers list and shared constants
+├── providers.py   # Provider dataclass, query logic, API client caching
 ├── judge.py       # Multi-judge logic: each provider judges, results are averaged
 └── display.py     # Rich-based markdown console output helper
 ```
 
-### main.py
+## Key Modules
 
-| Symbol              | Description                                                        |
-|---------------------|--------------------------------------------------------------------|
-| `generate_question` | Uses OpenAI to produce a single challenging question for the arena |
-| `has_api_key`       | Checks whether a provider's API key is available without making an API call |
-| `main`              | Async entry point — queries providers and runs judging concurrently via `asyncio.gather` |
+### arena/config.py
 
-### providers.py
+| Symbol                     | Description                                              |
+|----------------------------|----------------------------------------------------------|
+| `DEFAULT_PROVIDERS`        | Pre-configured list of 6 providers (GPT-5.2, GPT-5-mini, Claude Opus 4.6, Gemini 3.0 Flash, DeepSeek, Groq) |
+| `CLARIFICATION_MODEL`     | Model used for question clarity checking and refinement  |
+| `MAX_CLARIFICATION_ROUNDS` | Maximum clarification iterations before proceeding       |
+| `MAX_CLARIFY_ANSWER_LENGTH`| Truncation limit for clarifying answers                  |
+
+### arena/providers.py
 
 | Symbol              | Description                                                                 |
 |---------------------|-----------------------------------------------------------------------------|
 | `Provider`          | Dataclass holding a provider's name, model, API kind, auth details, and endpoint |
-| `PROVIDERS`         | Pre-configured list of providers (GPT-5-mini, GPT-5-nano, Claude Sonnet 4.5, Gemini 2.5 Flash, DeepSeek, Groq, Ollama) |
 | `validate_api_keys` | Prints the status of each required API key at startup                       |
 | `query_provider`    | Sends a question to a provider and returns the answer (or `None` if the key is missing) |
 
-### judge.py
+### arena/judge.py
 
 | Symbol               | Description                                                        |
 |-----------------------|--------------------------------------------------------------------|
@@ -45,18 +82,3 @@ lab2/
 | `judge_answers`       | Has a single provider judge all answers and return ranked results |
 | `average_rankings`    | Averages rank scores across all judges and returns sorted results |
 | `judge_all`           | Async — runs all judges concurrently, collects per-judge rankings, and computes averaged final ranking |
-
-### display.py
-
-| Symbol    | Description                                          |
-|-----------|------------------------------------------------------|
-| `display` | Renders a markdown string to the terminal using Rich |
-
-## Running
-
-```bash
-uv run python main.py
-uv run python desilvaware/best_answer/main.py 
-```
-
-Requires at least `OPENAI_API_KEY` in a `.env` file. Other provider keys are optional.
