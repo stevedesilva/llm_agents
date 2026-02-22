@@ -160,21 +160,7 @@ async def run_arena(
             "",
         )
 
-    per_judge, averaged = await judge_all(question, competitors, answers, judges)
-
-    rankings_parts: list[str] = []
-    for judge_name, ranking in per_judge.items():
-        if ranking:
-            lines = ", ".join(f"{rank}. {name}" for rank, name in ranking)
-            rankings_parts.append(f"**{judge_name}'s ranking:** {lines}")
-        else:
-            rankings_parts.append(f"**{judge_name}:** *failed to judge*")
-
-    rankings_parts.append("\n## Final Averaged Rankings\n")
-    for position, (avg_rank, name) in enumerate(averaged, start=1):
-        rankings_parts.append(f"**{position}.** {name} (avg rank: {avg_rank:.2f})")
-
-    rankings_md = "\n\n".join(rankings_parts)
+    _, averaged = await judge_all(question, competitors, answers, judges)
 
     winner_md = ""
     if averaged:
@@ -182,7 +168,7 @@ async def run_arena(
         winner_idx = competitors.index(winner_name)
         winner_md = f"## Winning Response — {winner_name}\n\n{answers[winner_idx]}"
 
-    return (f"## Final Question\n\n{question}", answers_md, rankings_md, winner_md)
+    return (f"## Final Question\n\n{question}", "", "", winner_md)
 
 
 # ---------------------------------------------------------------------------
@@ -235,8 +221,8 @@ def build_ui() -> gr.Blocks:
             gr.Markdown("## Results")
             status_md = gr.Markdown()
             final_q_md = gr.Markdown()
-            answers_md = gr.Markdown()
-            rankings_md = gr.Markdown()
+            answers_md = gr.Markdown(visible=False)
+            rankings_md = gr.Markdown(visible=False)
             winner_md = gr.Markdown()
 
         # ------------------------------------------------------------------

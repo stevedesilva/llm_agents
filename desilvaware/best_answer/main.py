@@ -101,11 +101,6 @@ async def main() -> None:
     display(f"## Final Question\n\n{question}")
 
     available = [p for p in PROVIDERS if p.has_api_key()]
-    skipped = [p for p in PROVIDERS if not p.has_api_key()]
-    for p in skipped:
-        display(f"*Skipping {p.name} — API key not set*")
-
-    display("### Querying all providers concurrently...")
 
     async def _query_one(provider: Provider) -> tuple[Provider, str | None]:
         try:
@@ -114,11 +109,7 @@ async def main() -> None:
                 timeout=QUERY_TIMEOUT,
             )
             return provider, answer
-        except asyncio.TimeoutError:
-            display(f"**{provider.name} timed out**")
-            return provider, None
-        except Exception as e:
-            display(f"**Error querying {provider.name}:** {e}")
+        except (asyncio.TimeoutError, Exception):
             return provider, None
 
     results = await asyncio.gather(*[_query_one(p) for p in available])
@@ -130,7 +121,6 @@ async def main() -> None:
     for provider, answer in results:
         if answer is None:
             continue
-        display(f"## {provider.name}\n\n{answer}")
         competitors.append(provider.name)
         answers.append(answer)
         judges.append(provider)
@@ -139,19 +129,7 @@ async def main() -> None:
         display("**Not enough competitors to judge (need at least 2).**")
         return
 
-    display("## Judging (each model judges all answers concurrently)...")
-    per_judge, averaged = await judge_all(question, competitors, answers, judges)
-
-    for judge_name, ranking in per_judge.items():
-        if ranking:
-            lines = ", ".join(f"{rank}. {name}" for rank, name in ranking)
-            display(f"**{judge_name}'s ranking:** {lines}")
-        else:
-            display(f"**{judge_name}:** *failed to judge*")
-
-    display("## Final Averaged Rankings\n")
-    for position, (avg_rank, name) in enumerate(averaged, start=1):
-        display(f"**{position}.** {name} (avg rank: {avg_rank:.2f})")
+    _, averaged = await judge_all(question, competitors, answers, judges)
 
     if averaged:
         _, winner_name = averaged[0]
