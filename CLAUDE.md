@@ -3,10 +3,11 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 @desilvaware/best_answer/README.md
+@1_foundations/lab2/README.md
 
 ## Project Overview
 
-LLM Arena is a Python tool that benchmarks multiple LLM providers by sending them the same question concurrently, having each provider judge all responses, and producing a crowd-sourced leaderboard. It uses `uv` as the package manager and Python 3.12+.
+LLM Agents is a Python project with learning labs and an LLM Arena that benchmarks multiple providers by sending them the same question concurrently, having each provider judge all responses, and producing a crowd-sourced leaderboard. It uses `uv` as the package manager and Python 3.12+.
 
 ## Commands
 
@@ -19,6 +20,12 @@ uv run python desilvaware/best_answer/app.py
 
 # Run the CLI interactive arena
 uv run python desilvaware/best_answer/main.py
+
+# Run the auto-generated question arena (lab2)
+uv run python 1_foundations/lab2/main.py
+
+# Run the basic OpenAI interaction lab
+uv run python 1_foundations/lab1/start.py
 
 # Run all tests
 uv run pytest
@@ -41,20 +48,22 @@ uv remove <package>
 
 ### Shared `arena/` package
 
-The core logic lives in `arena/` and is imported by both entry points:
+The core logic lives in `arena/` and is imported by all entry points:
 
-- `arena/providers.py` — `Provider` dataclass, `query_provider()`, `validate_api_keys()`, cached OpenAI/Anthropic client factories
+- `arena/config.py` — `DEFAULT_PROVIDERS`, `CLARIFICATION_MODEL`, `MAX_CLARIFICATION_ROUNDS`, `MAX_CLARIFY_ANSWER_LENGTH`
+- `arena/providers.py` — `Provider` dataclass, `query_provider()`, `validate_api_keys()`, cached OpenAI/Anthropic client factories, `QUERY_TIMEOUT`, `MAX_INPUT_LENGTH`
 - `arena/judge.py` — `judge_all()`, `average_rankings()`, prompt construction, JSON extraction from LLM responses
-- `arena/display.py` — `rich`-based console output helpers
-- `arena/config.py` — constants: `DEFAULT_PROVIDERS`, `CLARIFICATION_MODEL`, `MAX_CLARIFICATION_ROUNDS`, `QUERY_TIMEOUT`
+- `arena/display.py` — `rich`-based console output helper
 
 ### Entry points
 
 - `desilvaware/best_answer/app.py` — Gradio web UI: chat-style question clarification then arena run
 - `desilvaware/best_answer/main.py` — CLI version with the same clarification → arena flow
-- `main.py` — placeholder root entry point (not the real entry point)
+- `1_foundations/lab2/main.py` — Auto-generated question arena (no user clarification, uses its own provider list)
+- `1_foundations/lab1/start.py` — Basic OpenAI interaction patterns (learning lab)
+- `main.py` — placeholder root entry point
 
-### Data flow
+### Data flow (desilvaware/best_answer)
 
 1. User submits a question
 2. GPT iteratively clarifies the question (up to `MAX_CLARIFICATION_ROUNDS`)
@@ -72,13 +81,13 @@ API keys go in `.env` (copy from `.env.example`):
 
 | Variable | Provider |
 |---|---|
-| `OPENAI_API_KEY` | GPT models + question generation (required) |
-| `ANTHROPIC_API_KEY` | Claude Sonnet 4.5 (optional) |
-| `GOOGLE_API_KEY` | Gemini 2.5 Flash (optional) |
+| `OPENAI_API_KEY` | GPT models + question clarification (required) |
+| `ANTHROPIC_API_KEY` | Claude Opus 4.6 (optional) |
+| `GOOGLE_API_KEY` | Gemini 3.0 Flash (optional) |
 | `DEEPSEEK_API_KEY` | DeepSeek Chat (optional) |
 | `GROQ_API_KEY` | Groq (optional) |
 
-Ollama requires no key but needs a local server on port 11434.
+Lab2 also supports Ollama (no key needed, requires local server on port 11434).
 
 ## After Every Code Change
 
