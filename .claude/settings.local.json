@@ -15,7 +15,9 @@
       "Bash(code --command claude-code.open:*)",
       "Bash(code --command:*)",
       "Bash(echo:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(uv sync:*)",
+      "Bash(git status:*)"
     ]
   }
 }

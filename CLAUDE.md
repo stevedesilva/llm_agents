@@ -5,11 +5,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 @desilvaware/best_answer/README.md
 @1_foundations/lab2/README.md
 
-## Project Overview
+## Platform & Requirements
 
-LLM Agents is a Python project with learning labs and an LLM Arena that benchmarks multiple providers by sending them the same question concurrently, having each provider judge all responses, and producing a crowd-sourced leaderboard. It uses `uv` as the package manager and Python 3.12+.
+- **Language:** Python 3.12+
+- **Package Manager:** uv
+- **UI Framework:** Gradio
+- **Console Output:** Rich
+- **LLM Clients:** OpenAI, Anthropic
+- **Testing:** pytest, pytest-asyncio (strict mode)
 
-## Commands
+## Build & Validation Commands
+
+**IMPORTANT: After every code change, validate the build succeeds.**
+
+```bash
+# Lint — must pass with no errors
+uv run ruff check .
+
+# Tests — all must pass
+uv run pytest
+
+# Quick error check
+uv run ruff check . && uv run pytest -q
+```
+
+## Run Commands
 
 ```bash
 # Install dependencies
@@ -27,22 +47,20 @@ uv run python 1_foundations/lab2/main.py
 # Run the basic OpenAI interaction lab
 uv run python 1_foundations/lab1/start.py
 
-# Run all tests
-uv run pytest
-
 # Run a single test file
 uv run pytest tests/test_providers.py -v
 
 # Run with coverage
 uv run pytest --cov=arena
 
-# Lint
-uv run ruff check .
-
 # Add / remove dependencies
 uv add <package>
 uv remove <package>
 ```
+
+## Project Overview
+
+LLM Agents is a Python project with learning labs and an LLM Arena that benchmarks multiple providers by sending them the same question concurrently, having each provider judge all responses, and producing a crowd-sourced leaderboard.
 
 ## Architecture
 
@@ -88,17 +106,6 @@ API keys go in `.env` (copy from `.env.example`):
 | `GROQ_API_KEY` | Groq (optional) |
 
 Lab2 also supports Ollama (no key needed, requires local server on port 11434).
-
-## After Every Code Change
-
-Run the following to validate the build before committing:
-
-```bash
-uv run ruff check .
-uv run pytest
-```
-
-Both must pass with no errors.
 
 ## Testing
 

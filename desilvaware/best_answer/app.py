@@ -198,7 +198,7 @@ def build_ui() -> gr.Blocks:
         gr.Markdown("Ask a question and have multiple LLMs compete to give the best answer.")
 
         # Provider status
-        provider_status = gr.Markdown(
+        _provider_status = gr.Markdown(
             value=_provider_status_md(providers), label="Providers"
         )
 
