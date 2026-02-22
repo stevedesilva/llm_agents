@@ -376,13 +376,12 @@ def build_ui() -> gr.Blocks:
         def on_reset():
             return (
                 [],          # chatbot
-                "",          # msg
+                gr.update(value="", interactive=True),  # msg
                 "",          # current_question
                 False,       # is_clear
                 0,           # clarify_round
                 gr.update(interactive=False),  # arena_btn
                 gr.update(interactive=True),   # submit_btn
-                gr.update(interactive=True),   # msg (textbox)
                 gr.update(visible=False),      # results_group
                 "", "", "", "", "",            # status_md, final_q_md, answers_md, rankings_md, winner_md
             )
@@ -391,7 +390,7 @@ def build_ui() -> gr.Blocks:
             on_reset,
             [],
             [chatbot, msg, current_question, is_clear, clarify_round,
-             arena_btn, submit_btn, msg, results_group,
+             arena_btn, submit_btn, results_group,
              status_md, final_q_md, answers_md, rankings_md, winner_md],
         )
 
@@ -425,4 +424,4 @@ if __name__ == "__main__":
     load_dotenv()
     validate_api_keys(DEFAULT_PROVIDERS)
     app = build_ui()
-    app.launch(server_name="127.0.0.1", share=False)
+    app.launch(server_name="127.0.0.1", share=False, show_error=True)
