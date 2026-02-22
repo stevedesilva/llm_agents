@@ -17,7 +17,8 @@
       "Bash(echo:*)",
       "Bash(git commit:*)",
       "Bash(uv sync:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(cp:*)"
     ]
   }
 }
