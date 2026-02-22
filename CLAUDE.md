@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@desilvaware/best_answer/README.md
+
 ## Project Overview
 
 LLM Arena is a Python tool that benchmarks multiple LLM providers by sending them the same question concurrently, having each provider judge all responses, and producing a crowd-sourced leaderboard. It uses `uv` as the package manager and Python 3.12+.
