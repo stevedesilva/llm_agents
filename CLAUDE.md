@@ -53,6 +53,12 @@ uv run pytest tests/test_providers.py -v
 # Run with coverage
 uv run pytest --cov=arena
 
+# Run the DSA Tester backend (FastAPI on port 8001)
+uv run python desilvaware/dsa_tester/server.py
+
+# Run the DSA Tester frontend dev server (port 5174)
+cd desilvaware/dsa_tester/frontend && npm run dev
+
 # Add / remove dependencies
 uv add <package>
 uv remove <package>
