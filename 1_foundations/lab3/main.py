@@ -43,4 +43,17 @@ system_prompt += f"\n\n## Summary:\n{summary}\n\n## LinkedIn Profile:\n{linkedin
 system_prompt += f"With this context, please chat with the user, always staying in character as {name}."
 
 
-system_prompt
+print(system_prompt)
+
+
+def chat(message, history):
+    messages = (
+        [{"role": "system", "content": system_prompt}]
+        + history
+        + [{"role": "user", "content": message}]
+    )
+    response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages)
+    return response.choices[0].message.content
+
+
+gr.ChatInterface(chat).launch()
