@@ -56,7 +56,7 @@ def chat(message, history):
     return response.choices[0].message.content
 
 
-gr.ChatInterface(chat).launch()
+# gr.ChatInterface(chat).launch()
 
 from pydantic import BaseModel
 
@@ -93,3 +93,18 @@ def evaluate(reply, message, history) -> Evaluation:
     return response.choices[0].message.parsed
 
     
+messages = [{"role": "system", "content": system_prompt}] + [{"role": "user", "content": "do you hold a patent?"}]
+response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages)
+reply = response.choices[0].message.content
+
+print(reply)
+
+evaluate(reply, "do you hold a patent?", messages[:1])
+
+def rerun(reply, message, history, feedback):
+    updated_system_prompt = system_prompt + "\n\n## Previous answer rejected\nYou just tried to reply, but the quality control rejected your reply\n"
+    updated_system_prompt += f"## Your attempted answer:\n{reply}\n\n"
+    updated_system_prompt += f"## Reason for rejection:\n{feedback}\n\n"
+    messages = [{"role": "system", "content": updated_system_prompt}] + history + [{"role": "user", "content": message}]
+    response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages)
+    return response.choices[0].message.content
