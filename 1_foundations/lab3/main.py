@@ -84,7 +84,7 @@ def evaluator_user_prompt(reply, message, history):
 import os
 gemini = OpenAI(
     api_key=os.getenv("GOOGLE_API_KEY"),
-    base_url="https://generativelanguage.googleapi.com/v1beta/openai/"
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
 def evaluate(reply, message, history) -> Evaluation:
@@ -108,3 +108,45 @@ def rerun(reply, message, history, feedback):
     messages = [{"role": "system", "content": updated_system_prompt}] + history + [{"role": "user", "content": message}]
     response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages)
     return response.choices[0].message.content
+
+
+def normalize_history(history):
+    normalized = []
+    for item in history:
+        if isinstance(item, dict):
+            role = item.get("role")
+            content = item.get("content")
+            if role in {"user", "assistant", "system"} and content is not None:
+                normalized.append({"role": role, "content": str(content)})
+        elif isinstance(item, (list, tuple)) and len(item) == 2:
+            user_msg, assistant_msg = item
+            if user_msg:
+                normalized.append({"role": "user", "content": str(user_msg)})
+            if assistant_msg:
+                normalized.append({"role": "assistant", "content": str(assistant_msg)})
+    return normalized
+
+def chat(message, history):
+    if "patent" in message:
+        system = system_prompt + "\n\nEverything in your reply needs to be in pig latin - \
+              it is mandatory that you respond only and entirely in pig latin"
+    else:
+        system = system_prompt
+    
+    normalized_history = normalize_history(history)
+    messages = [{"role": "system", "content": system}] + normalized_history + [{"role": "user", "content": message}]
+    response = openai.chat.completions.create(model="gpt-4o-mini", messages=messages)
+    reply =response.choices[0].message.content
+
+    evaluation = evaluate(reply, message, normalized_history)
+    
+    if evaluation.is_acceptable:
+        print("Passed evaluation - returning reply")
+    else:
+        print("Failed evaluation - retrying")
+        print(evaluation.feedback)
+        reply = rerun(reply, message, history, evaluation.feedback)       
+    return reply
+
+
+gr.ChatInterface(chat).launch()
