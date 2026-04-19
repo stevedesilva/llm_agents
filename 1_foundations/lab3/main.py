@@ -103,6 +103,23 @@ def format_history_for_eval(history) -> str:
     return "\n".join(lines) if lines else "(no prior conversation)"
 
 
+def content_to_text(content) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        chunks = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text":
+                text = part.get("text")
+                if text:
+                    chunks.append(str(text))
+            elif isinstance(part, str):
+                chunks.append(part)
+        if chunks:
+            return "\n".join(chunks)
+    return ""
+
+
 def evaluator_user_prompt(reply, message, history):
     user_prompt = "Here's the conversation between the User and the Agent:\n\n"
     user_prompt += f"{format_history_for_eval(history)}\n\n"
@@ -125,7 +142,8 @@ gemini_client = OpenAI(api_key=require_env("GOOGLE_API_KEY"), base_url=GEMINI_BA
 def generate_reply(messages):
     try:
         response = openai_client.chat.completions.create(model=AGENT_MODEL, messages=messages)
-        return response.choices[0].message.content or "I am sorry, I do not have a response right now."
+        reply_text = content_to_text(response.choices[0].message.content)
+        return reply_text or "I am sorry, I do not have a response right now."
     except Exception:
         logger.exception("Agent model call failed")
         return "I am sorry, I am having trouble responding right now. Please try again in a moment."
@@ -178,14 +196,18 @@ def chat(message, history):
 
     if evaluation and evaluation.is_acceptable:
         logger.info("Passed evaluation - returning reply")
+        logger.info("Assistant reply: %s", reply)
         return reply
 
     if evaluation:
         logger.info("Failed evaluation - retrying")
         logger.info("Evaluator feedback: %s", evaluation.feedback)
-        return rerun(reply, message, normalized_history, evaluation.feedback)
+        reply = rerun(reply, message, normalized_history, evaluation.feedback)
+        logger.info("Assistant reply: %s", reply)
+        return reply
 
     logger.info("Skipping rerun because evaluator is unavailable")
+    logger.info("Assistant reply: %s", reply)
     return reply
 
 
