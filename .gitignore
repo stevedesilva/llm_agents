@@ -29,4 +29,5 @@ dist/
 Thumbs.db
 
 # Local lab artifacts
-1_foundations/lab3/me/
+1_foundations/lab3/me/*
+!1_foundations/lab3/me/fake_cv.md

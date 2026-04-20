@@ -131,7 +131,7 @@ def evaluator_user_prompt(reply, message, history):
 
 BASE_DIR = Path(__file__).parent
 SUMMARY = read_text(BASE_DIR / "me" / "summary.txt")
-LINKEDIN = read_pdf_text(BASE_DIR / "me" / "Steve_deSilva_CV.pdf")
+LINKEDIN = read_text(BASE_DIR / "me" / "fake_cv.md")
 SYSTEM_PROMPT = build_system_prompt(NAME, SUMMARY, LINKEDIN)
 EVALUATOR_SYSTEM_PROMPT = build_evaluator_system_prompt(NAME, SUMMARY, LINKEDIN)
 
